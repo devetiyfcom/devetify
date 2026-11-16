@@ -28,5 +28,15 @@
   {"ad": "Secret Santa", "bolme": "Bayram", "qeyd": "Qırmızı zərf, qar dənəsi", "link": "https://devetiyfcom.github.io/Secret-Santa/", "sekil": "secret-santa.jpg"},
   {"ad": "Balaca şahzadələrin bayramı", "bolme": "Sünnət toyu", "qeyd": "Ayıcıqlı hava şarları", "link": "https://devetiyfcom.github.io/Mamedovlar/", "sekil": "mamedovlar.jpg"},
   {"ad": "Balaca şahzadələrin bayramı", "bolme": "Sünnət toyu", "qeyd": "Fırlanan karusel", "link": "https://devetiyfcom.github.io/karusel/", "sekil": "karusel.jpg"},
-  {"ad": "Yeni il şənliyi", "bolme": "Bayram", "qeyd": "Ocaq başında, buz altında tarix", "link": "https://devetiyfcom.github.io/Yeni-il-senliyi/", "sekil": "yeni-il-senliyi.jpg"}
+  {"ad": "Yeni il şənliyi", "bolme": "Bayram", "qeyd": "Ocaq başında, buz altında tarix", "link": "https://devetiyfcom.github.io/Yeni-il-senliyi/", "sekil": "yeni-il-senliyi.jpg"},
+  {"ad": "Fərid & Arzu", "bolme": "Toy", "qeyd": "Ağ zərfdən çıxan kart", "link": "https://devetiyfcom.github.io/Ferid-Arzu/", "sekil": "ferid-arzu.jpg"},
+  {"ad": "Leyla & Kamran", "bolme": "Toy", "qeyd": "Bordo zərf, qızılı möhür", "link": "https://devetiyfcom.github.io/Leyla-Kamran/", "sekil": "leyla-kamran.jpg"},
+  {"ad": "Kənan & Arzu", "bolme": "Toy", "qeyd": "Krujevalı zərf, kəpənəkli tarix", "link": "https://devetiyfcom.github.io/Kenan-Arzu/", "sekil": "kenan-arzu.jpg"},
+  {"ad": "Şıxəli & Şaziyyə", "bolme": "Toy", "qeyd": "Krujevalı bordo zərf", "link": "https://devetiyfcom.github.io/Shixeli-Shaziyye/", "sekil": "shixeli-shaziyye.jpg"},
+  {"ad": "Tural & Tamaşa", "bolme": "Toy", "qeyd": "Çiçəklər arasından adlar", "link": "https://devetiyfcom.github.io/TT/", "sekil": "tural-tamasa.jpg"},
+  {"ad": "Ramil & Sabina", "bolme": "Toy", "qeyd": "Mavi çiçəklər, kəpənəklər", "link": "https://devetiyfcom.github.io/Ramil-Sabina/", "sekil": "ramil-sabina.jpg"},
+  {"ad": "Seymur & Aytac", "bolme": "Toy", "qeyd": "Sarayın qapısı açılır, sonsuzluq ∞", "link": "https://devetiyfcom.github.io/Seymur-Aytac-/", "sekil": "seymur-aytac.jpg"},
+  {"ad": "70 illik yubiley", "bolme": "Yubiley", "qeyd": "Qızılı 70, ulduzlar", "link": "https://devetiyfcom.github.io/Meryem/", "sekil": "meryem-70.jpg"},
+  {"ad": "Gender Party", "bolme": "Gender party", "qeyd": "Oğlan, yoxsa qız? Səs ver", "link": "https://devetiyfcom.github.io/Genderparty/", "sekil": "gender-party.jpg"},
+  {"ad": "Yeni il dəvətnaməsi", "bolme": "Bayram", "qeyd": "Yolka ilə açılış", "link": "https://devetiyfcom.github.io/yeni-il-senliyi2/", "sekil": "yeni-il-senliyi2.jpg"}
 ]
