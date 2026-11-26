@@ -1,0 +1,91 @@
+import sys, asyncio, pathlib, shutil, subprocess, time, base64
+from playwright.async_api import async_playwright
+
+# usage: record_book.py <index.html> <out.mp4> [max_pages]
+# 1) records the real intro (tap to open), 2) screenshots each screen of the invitation,
+# 3) plays the screens as book pages that turn like a real book, 4) joins both into one 1080x1920 MP4.
+# Dates, times, venues and countdowns are blurred (same rules as record.py).
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from blur import BLUR_JS
+
+src = pathlib.Path(sys.argv[1]).resolve()
+out = pathlib.Path(sys.argv[2]).resolve()
+max_pages = int(sys.argv[3]) if len(sys.argv) > 3 else 6
+W, H = 540, 960
+INTRO = 3.0      # seconds of real intro animation kept
+HOLD, FLIP = 1.6, 1.1
+
+BOOK = """<!doctype html><html><head><style>
+html,body{margin:0;height:100%;background:#1b1714;overflow:hidden}
+#book{position:absolute;inset:0;perspective:1800px}
+.pg{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:left center;
+    transform-style:preserve-3d;backface-visibility:hidden;box-shadow:0 0 0 rgba(0,0,0,0)}
+.pg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.0),rgba(0,0,0,.0));pointer-events:none}
+.turn{transition:transform %FLIP%s cubic-bezier(.45,.05,.35,1), filter %FLIP%s;transform:rotateY(-178deg);filter:brightness(.75)}
+.shade{position:absolute;top:0;bottom:0;left:0;width:28px;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,0));z-index:999}
+</style></head><body><div id="book">%PAGES%</div><div class="shade"></div><script>
+const pgs=[...document.querySelectorAll('.pg')];
+pgs.forEach((p,i)=>p.style.zIndex=pgs.length-i);
+window.play=()=>new Promise(res=>{let i=0;const step=()=>{if(i>=pgs.length-1)return setTimeout(res,%HOLDMS%);
+ setTimeout(()=>{pgs[i].classList.add('turn');i++;setTimeout(step,%FLIPMS%)},%HOLDMS%)};step();});
+</script></body></html>"""
+
+async def main():
+    work = out.parent / ("_book_" + out.stem)
+    shutil.rmtree(work, ignore_errors=True); work.mkdir(parents=True)
+    async with async_playwright() as p:
+        b = await p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
+        # pass 1: intro video + page screenshots
+        ctx = await b.new_context(viewport={"width": W, "height": H}, is_mobile=True, has_touch=True,
+                                  record_video_dir=str(work / "v1"), record_video_size={"width": W, "height": H})
+        await ctx.add_init_script(BLUR_JS)
+        t0 = time.monotonic()
+        pg = await ctx.new_page()
+        await pg.goto(src.as_uri(), wait_until="load")
+        await pg.wait_for_timeout(1500)
+        t_tap = time.monotonic() - t0
+        await pg.mouse.click(W / 2, H / 2)
+        await pg.wait_for_timeout(1500)
+        await pg.mouse.click(W / 2, H / 2)
+        await pg.wait_for_timeout(int(INTRO * 1000))
+        shots, last = [], None
+        for i in range(max_pages):
+            await pg.wait_for_timeout(900)
+            f = work / f"p{i}.png"
+            await pg.screenshot(path=str(f))
+            data = f.read_bytes()
+            if data == last: f.unlink(); break
+            shots.append(f); last = data
+            y0 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
+            await pg.mouse.wheel(0, H * 0.92)
+            await pg.wait_for_timeout(400)
+            y1 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
+            if y1 == y0 and i > 0: break
+        await ctx.close()
+        # pass 2: book flip of the screenshots
+        pages = "".join(f'<div class="pg" style="background-image:url(data:image/png;base64,{base64.b64encode(s.read_bytes()).decode()})"></div>' for s in shots)
+        html = (BOOK.replace("%PAGES%", pages).replace("%FLIP%", str(FLIP))
+                .replace("%HOLDMS%", str(int(HOLD * 1000))).replace("%FLIPMS%", str(int(FLIP * 1000))))
+        (work / "book.html").write_text(html)
+        ctx2 = await b.new_context(viewport={"width": W, "height": H},
+                                   record_video_dir=str(work / "v2"), record_video_size={"width": W, "height": H})
+        t1 = time.monotonic()
+        pg2 = await ctx2.new_page()
+        await pg2.goto((work / "book.html").as_uri(), wait_until="load")
+        await pg2.wait_for_timeout(300)
+        t_play = time.monotonic() - t1
+        await pg2.evaluate("play()")
+        await ctx2.close(); await b.close()
+    v1 = next((work / "v1").glob("*.webm")); v2 = next((work / "v2").glob("*.webm"))
+    a0 = max(t_tap - 0.4, 0); a_len = 0.4 + 1.5 + INTRO
+    vf = "scale=1080:1920:flags=lanczos,fps=30,setsar=1"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                    "-ss", f"{a0:.2f}", "-t", f"{a_len:.2f}", "-i", str(v1),
+                    "-ss", f"{t_play:.2f}", "-i", str(v2),
+                    "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[v]",
+                    "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                    "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(out)], check=True)
+    shutil.rmtree(work, ignore_errors=True)
+    print(f"pages={len(shots)}")
+
+asyncio.run(main())
