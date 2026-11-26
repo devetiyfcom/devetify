@@ -10,10 +10,11 @@ from blur import BLUR_JS
 
 src = pathlib.Path(sys.argv[1]).resolve()
 out = pathlib.Path(sys.argv[2]).resolve()
-max_pages = int(sys.argv[3]) if len(sys.argv) > 3 else 6
+scan_pages = 8
+keep_pages = int(sys.argv[3]) if len(sys.argv) > 3 else 3   # hero + the most striking sections only
 W, H = 540, 960
-INTRO = 3.0      # seconds of real intro animation kept
-HOLD, FLIP = 1.6, 1.1
+INTRO = 2.5      # seconds of real intro animation kept
+HOLD, FLIP = 1.2, 0.8
 
 BOOK = """<!doctype html><html><head><style>
 html,body{margin:0;height:100%;background:#1b1714;overflow:hidden}
@@ -29,6 +30,27 @@ pgs.forEach((p,i)=>p.style.zIndex=pgs.length-i);
 window.play=()=>new Promise(res=>{let i=0;const step=()=>{if(i>=pgs.length-1)return setTimeout(res,%HOLDMS%);
  setTimeout(()=>{pgs[i].classList.add('turn');i++;setTimeout(step,%FLIPMS%)},%HOLDMS%)};step();});
 </script></body></html>"""
+
+def pick(shots, k):
+    """Keep the hero plus the k-1 most visually rich, mutually different screens, in page order."""
+    from PIL import Image, ImageStat
+    if len(shots) <= k: return shots
+    def sig(p):
+        im = Image.open(p).convert("RGB").resize((24, 42))
+        return im, sum(ImageStat.Stat(im).stddev)
+    info = [(p,) + sig(p) for p in shots]
+    rest = sorted(info[1:], key=lambda x: -x[2])
+    chosen = [info[0]]
+    def diff(a, b):
+        return sum(abs(x - y) for pa, pb in zip(list(a.getdata()), list(b.getdata())) for x, y in zip(pa, pb))
+    for c in rest:
+        if len(chosen) >= k: break
+        if all(diff(c[1], o[1]) > 24 * 42 * 3 * 18 for o in chosen): chosen.append(c)
+    for c in rest:
+        if len(chosen) >= k: break
+        if c not in chosen: chosen.append(c)
+    keep = {c[0] for c in chosen}
+    return [p for p in shots if p in keep]
 
 async def main():
     work = out.parent / ("_book_" + out.stem)
@@ -49,7 +71,7 @@ async def main():
         await pg.mouse.click(W / 2, H / 2)
         await pg.wait_for_timeout(int(INTRO * 1000))
         shots, last = [], None
-        for i in range(max_pages):
+        for i in range(scan_pages):
             await pg.wait_for_timeout(900)
             f = work / f"p{i}.png"
             await pg.screenshot(path=str(f))
@@ -62,6 +84,7 @@ async def main():
             y1 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
             if y1 == y0 and i > 0: break
         await ctx.close()
+        shots = pick(shots, keep_pages)
         # pass 2: book flip of the screenshots
         pages = "".join(f'<div class="pg" style="background-image:url(data:image/png;base64,{base64.b64encode(s.read_bytes()).decode()})"></div>' for s in shots)
         html = (BOOK.replace("%PAGES%", pages).replace("%FLIP%", str(FLIP))
@@ -79,10 +102,11 @@ async def main():
     v1 = next((work / "v1").glob("*.webm")); v2 = next((work / "v2").glob("*.webm"))
     a0 = max(t_tap - 0.4, 0); a_len = 0.4 + 1.5 + INTRO
     vf = "scale=1080:1920:flags=lanczos,fps=30,setsar=1"
+    wm = "drawtext=text='@devetify':font='Cormorant Garamond':fontsize=46:fontcolor=white@0.55:shadowcolor=black@0.35:shadowx=2:shadowy=2:x=(w-text_w)/2:y=h-150"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
                     "-ss", f"{a0:.2f}", "-t", f"{a_len:.2f}", "-i", str(v1),
-                    "-ss", f"{t_play:.2f}", "-i", str(v2),
-                    "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[v]",
+                    "-ss", f"{t_play:.2f}", "-t", f"{len(shots)*HOLD + (len(shots)-1)*FLIP + 0.2:.2f}", "-i", str(v2),
+                    "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[c];[c]{wm}[v]",
                     "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                     "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(out)], check=True)
     shutil.rmtree(work, ignore_errors=True)
