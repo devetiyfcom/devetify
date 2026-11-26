@@ -13,8 +13,8 @@ out = pathlib.Path(sys.argv[2]).resolve()
 scan_pages = 8
 keep_pages = int(sys.argv[3]) if len(sys.argv) > 3 else 3   # hero + the most striking sections only
 W, H = 540, 960
-INTRO = 2.5      # seconds of real intro animation kept
-HOLD, FLIP = 1.2, 0.8
+INTRO = 3.0      # seconds of real intro animation kept
+HOLD, FLIP = 1.7, 0.9
 
 BOOK = """<!doctype html><html><head><style>
 html,body{margin:0;height:100%;background:#1b1714;overflow:hidden}
