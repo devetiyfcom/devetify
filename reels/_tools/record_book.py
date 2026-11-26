@@ -105,7 +105,7 @@ async def main():
     wm = "drawtext=text='@devetify':font='Cormorant Garamond':fontsize=46:fontcolor=white@0.55:shadowcolor=black@0.35:shadowx=2:shadowy=2:x=(w-text_w)/2:y=h-150"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
                     "-ss", f"{a0:.2f}", "-t", f"{a_len:.2f}", "-i", str(v1),
-                    "-ss", f"{t_play:.2f}", "-t", f"{len(shots)*HOLD + (len(shots)-1)*FLIP + 0.2:.2f}", "-i", str(v2),
+                    "-ss", f"{t_play:.2f}", "-t", f"{len(shots)*HOLD + (len(shots)-1)*FLIP - 0.3:.2f}", "-i", str(v2),
                     "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[c];[c]{wm}[v]",
                     "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                     "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(out)], check=True)

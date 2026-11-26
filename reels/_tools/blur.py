@@ -5,7 +5,7 @@ BLUR_JS = r"""
     /\d{1,2}\s*[.\/-]\s*\d{1,2}\s*[.\/-]\s*\d{2,4}/,
     new RegExp('\\d{1,2}\\s*' + M, 'i'), new RegExp(M + '\\s*\\d{1,4}', 'i'),
     /\b20\d\d\b/, /\b\d{1,2}[:.]\d{2}\b/,
-    /(saray|palace|hall|restoran|restaurant|şadlıq|sadliq|zalı|\bzal\b|plaza|bakı|baku|sumqayıt|gəncə|küç|prospekt|prosp\.|ünvan|events|gallery|steak|manqal|meridian|hotel|otel|park\b|ресторан|зал|дворец|ул\.|баку|адрес|venue|address|street)/i
+    /(saray|palace|palas|hall|restoran|restaurant|şadlıq|sadliq|zalı|\bzal\b|plaza|bakı|baku|sumqayıt|gəncə|küç|prospekt|prosp\.|ünvan|events|gallery|steak|manqal|meridian|hotel|otel|park\b|ресторан|зал|дворец|ул\.|баку|адрес|venue|address|street)/i
   ];
   const hit = t => pats.some(p => p.test(t));
   function scan() {
@@ -27,6 +27,7 @@ BLUR_JS = r"""
         if (![...e.children].some(c => c.dataset.dvBlur)) { e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important'); }
       }
     });
+    document.querySelectorAll('[class*="cal" i]:not([class*="cal-" i]), [class*="calendar" i], [id*="calendar" i], [class*="countdown" i], [id*="countdown" i], [class*="timer" i]').forEach(e => { if (!e.dataset.dvBlur && e.offsetHeight < 400) { e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important'); } });
     document.querySelectorAll('iframe[src*="map"], a[href*="maps"]').forEach(e => e.style.setProperty('filter','blur(9px)','important'));
   }
   const start = () => { scan(); new MutationObserver(scan).observe(document.body, {subtree:true, childList:true, characterData:true}); setInterval(scan, 300); };
