@@ -70,23 +70,54 @@ async def main():
         await pg.wait_for_timeout(1500)
         await pg.mouse.click(W / 2, H / 2)
         await pg.wait_for_timeout(int(INTRO * 1000))
-        shots, last = [], None
-        for i in range(scan_pages):
-            await pg.wait_for_timeout(900)
-            f = work / f"p{i}.png"
-            await pg.screenshot(path=str(f))
-            data = f.read_bytes()
-            if data == last: f.unlink(); break
-            shots.append(f); last = data
-            y0 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
-            await pg.mouse.wheel(0, H * 0.92)
-            await pg.wait_for_timeout(400)
-            y1 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
-            if y1 == y0 and i > 0: break
+        shots = []
+        # capture whole sections so no page is cut in half
+        n_sec = await pg.evaluate("""() => {
+            const vis = e => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+                return r.height > 160 && r.width > 200 && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.position !== 'fixed'; };
+            const rsvp = e => /rsvp|count|timer|anket|cavab/i.test((e.className||'') + ' ' + (e.id||'')) || e.querySelector('form,input,textarea,select');
+            let secs = [...document.querySelectorAll('section')].filter(vis);
+            const nonR = secs.filter(e => !rsvp(e)); if (nonR.length >= 2) secs = nonR;
+            secs = secs.filter(e => !secs.some(o => o !== e && o.contains(e)));
+            secs.forEach((e, i) => e.dataset.dvSec = i);
+            return secs.length; }""")
+        if n_sec >= 2:
+            for i in range(min(n_sec, scan_pages)):
+                loc = pg.locator(f'[data-dv-sec="{i}"]')
+                await loc.evaluate("e => e.scrollIntoView({block: 'start'})")
+                await pg.wait_for_timeout(1000)
+                f = work / f"p{i}.png"
+                try:
+                    await loc.screenshot(path=str(f), timeout=8000)
+                    shots.append(f)
+                except Exception:
+                    pass
+        if len(shots) < 2:
+            shots, last = [], None
+            for i in range(scan_pages):
+                await pg.wait_for_timeout(900)
+                f = work / f"p{i}.png"
+                await pg.screenshot(path=str(f))
+                data = f.read_bytes()
+                if data == last: f.unlink(); break
+                shots.append(f); last = data
+                y0 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
+                await pg.mouse.wheel(0, H * 0.92)
+                await pg.wait_for_timeout(400)
+                y1 = await pg.evaluate("window.scrollY + (document.scrollingElement||document.body).scrollTop")
+                if y1 == y0 and i > 0: break
         await ctx.close()
         shots = pick(shots, keep_pages)
         # pass 2: book flip of the screenshots
-        pages = "".join(f'<div class="pg" style="background-image:url(data:image/png;base64,{base64.b64encode(s.read_bytes()).decode()})"></div>' for s in shots)
+        def page_div(path):
+            from PIL import Image
+            im = Image.open(path).convert("RGB"); w, h = im.size
+            if h > w * (H / W) * 1.5:            # very tall section: keep its top part only
+                im = im.crop((0, 0, w, int(w * H / W * 1.15))); im.save(path); w, h = im.size
+            bg = "rgb(%d,%d,%d)" % im.getpixel((2, 2))
+            b64 = base64.b64encode(pathlib.Path(path).read_bytes()).decode()
+            return (f'<div class="pg" style="background:{bg} url(data:image/png;base64,{b64}) center/contain no-repeat"></div>')
+        pages = "".join(page_div(s_) for s_ in shots)
         html = (BOOK.replace("%PAGES%", pages).replace("%FLIP%", str(FLIP))
                 .replace("%HOLDMS%", str(int(HOLD * 1000))).replace("%FLIPMS%", str(int(FLIP * 1000))))
         (work / "book.html").write_text(html)
