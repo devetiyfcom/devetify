@@ -7,6 +7,8 @@ BLUR_JS = r"""
     /\b20\d\d\b/, /\b\d{1,2}[:.]\d{2}\b/,
     /(saray|palace|palas|hall|restoran|restaurant|şadlıq|sadliq|zalı|\bzal\b|plaza|bakı|baku|sumqayıt|gəncə|küç|prospekt|prosp\.|ünvan|events|gallery|steak|manqal|meridian|hotel|otel|park\b|ресторан|зал|дворец|ул\.|баку|адрес|venue|address|street)/i
   ];
+  pats.push(new RegExp('^' + M + '$', 'i'),
+    /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|bazar ertəsi|çərşənbə axşamı|çərşənbə|cümə axşamı|cümə|şənbə|bazar|понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)$/i);
   const hit = t => pats.some(p => p.test(t));
   function scan() {
     const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -19,6 +21,14 @@ BLUR_JS = r"""
       el.dataset.dvBlur = 1;
       el.style.setProperty('filter', 'blur(9px)', 'important');
     }
+    // date parts split into separate elements (day number / month / weekday)
+    document.querySelectorAll('[class]').forEach(e => {
+      if (e.dataset.dvBlur || e === document.body) return;
+      const c = (typeof e.className === 'string' ? e.className : '');
+      if (/(^|[\s_-])(date|day|month|year|weekday|time)([\s_-]|$)/i.test(c) && (e.innerText || '').trim().length < 40 && (e.innerText || '').trim()) {
+        e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important');
+      }
+    });
     // countdown boxes reveal the date indirectly: blur the smallest element holding all its units
     document.querySelectorAll('div,section,ul,p').forEach(e => {
       if (e.dataset.dvBlur) return;

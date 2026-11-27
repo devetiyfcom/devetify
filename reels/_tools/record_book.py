@@ -77,6 +77,7 @@ async def main():
                 return r.height > 160 && r.width > 200 && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.position !== 'fixed'; };
             const rsvp = e => /rsvp|count|timer|anket|cavab/i.test((e.className||'') + ' ' + (e.id||'')) || e.querySelector('form,input,textarea,select');
             let secs = [...document.querySelectorAll('section')].filter(vis);
+            if (secs.length < 2) secs = [...document.querySelectorAll('article, .card, .screen, .page')].filter(vis);
             const nonR = secs.filter(e => !rsvp(e)); if (nonR.length >= 2) secs = nonR;
             secs = secs.filter(e => !secs.some(o => o !== e && o.contains(e)));
             secs.forEach((e, i) => e.dataset.dvSec = i);
