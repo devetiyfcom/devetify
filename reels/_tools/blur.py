@@ -25,9 +25,15 @@ BLUR_JS = r"""
     document.querySelectorAll('[class]').forEach(e => {
       if (e.dataset.dvBlur || e === document.body) return;
       const c = (typeof e.className === 'string' ? e.className : '');
-      if (/(^|[\s_-])(date|day|month|year|weekday|time)([\s_-]|$)/i.test(c) && (e.innerText || '').trim().length < 40 && (e.innerText || '').trim()) {
+      if (/(^|[\s_-])(date|day|month|year|weekday|time|venue|place|address|adres|unvan|location|hall)([\s_-]|$)/i.test(c) && (e.innerText || '').trim().length < 80 && (e.innerText || '').trim()) {
         e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important');
       }
+    });
+    // venue photos labelled with the venue name
+    document.querySelectorAll('[aria-label],img[alt]').forEach(e => {
+      if (e.dataset.dvBlur) return;
+      const t = e.getAttribute('aria-label') || e.getAttribute('alt') || '';
+      if (t && t.length < 160 && hit(t)) { e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important'); }
     });
     // countdown boxes reveal the date indirectly: blur the smallest element holding all its units
     document.querySelectorAll('div,section,ul,p').forEach(e => {
