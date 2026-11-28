@@ -45,6 +45,13 @@ BLUR_JS = r"""
     });
     document.querySelectorAll('[class*="cal" i]:not([class*="cal-" i]), [class*="calendar" i], [id*="calendar" i], [class*="countdown" i], [id*="countdown" i], [class*="timer" i]').forEach(e => { if (!e.dataset.dvBlur && e.offsetHeight < 400) { e.dataset.dvBlur = 1; e.style.setProperty('filter','blur(9px)','important'); } });
     document.querySelectorAll('iframe[src*="map"], a[href*="maps"]').forEach(e => e.style.setProperty('filter','blur(9px)','important'));
+    // DV_KEEP: sections Fuad allowed to show (e.g. venue) - unblur them, but dates/times inside stay blurred
+    if (window.DV_KEEP) document.querySelectorAll(window.DV_KEEP).forEach(r => [r, ...r.querySelectorAll('*')].forEach(e => {
+      if (!e.style.filter) return;
+      const t = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.nodeValue).join(' ').trim();   // own text only
+      if (pats.slice(0, 5).some(p => p.test(t))) return;
+      e.style.removeProperty('filter');
+    }));
   }
   const start = () => { scan(); new MutationObserver(scan).observe(document.body, {subtree:true, childList:true, characterData:true}); setInterval(scan, 300); };
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);

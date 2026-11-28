@@ -1,4 +1,4 @@
-import sys, asyncio, pathlib, shutil, subprocess, time, base64
+import os, sys, asyncio, pathlib, shutil, subprocess, time, base64
 from playwright.async_api import async_playwright
 
 # usage: record_book.py <index.html> <out.mp4> [max_pages]
@@ -60,6 +60,8 @@ async def main():
         # pass 1: intro video + page screenshots
         ctx = await b.new_context(viewport={"width": W, "height": H}, is_mobile=True, has_touch=True,
                                   record_video_dir=str(work / "v1"), record_video_size={"width": W, "height": H})
+        if os.environ.get("DV_KEEP"):   # sections allowed to stay sharp, e.g. DV_KEEP='#mekan'
+            await ctx.add_init_script("window.DV_KEEP=" + repr(os.environ["DV_KEEP"]) + ";")
         await ctx.add_init_script(BLUR_JS)
         t0 = time.monotonic()
         pg = await ctx.new_page()
@@ -134,12 +136,19 @@ async def main():
     a0 = max(t_tap - 0.4, 0); a_len = 0.4 + 1.5 + INTRO
     vf = "scale=1080:1920:flags=lanczos,fps=30,setsar=1"
     wm = "drawtext=text='@devetify':font='Cormorant Garamond':fontsize=46:fontcolor=white@0.55:shadowcolor=black@0.35:shadowx=2:shadowy=2:x=(w-text_w)/2:y=h-150"
+    # the invitation's own music (DV_AUDIO=path, or the <audio> mp3 next to index.html)
+    music = os.environ.get("DV_AUDIO") or ""
+    b_len = len(shots)*HOLD + (len(shots)-1)*FLIP - 0.3
+    total = a_len + b_len
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
                     "-ss", f"{a0:.2f}", "-t", f"{a_len:.2f}", "-i", str(v1),
                     "-ss", f"{t_play:.2f}", "-t", f"{len(shots)*HOLD + (len(shots)-1)*FLIP - 0.3:.2f}", "-i", str(v2),
-                    "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[c];[c]{wm}[v]",
-                    "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                    "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(out)], check=True)
+                    *(["-i", music] if music else []),
+                    "-filter_complex", f"[0:v]{vf}[a];[1:v]{vf}[b];[a][b]concat=n=2:v=1[c];[c]{wm}[v]"
+                    + (f";[2:a]atrim=0:{total:.2f},afade=t=in:d=0.3,afade=t=out:st={total-1.2:.2f}:d=1.2[au]" if music else ""),
+                    "-map", "[v]", *(["-map", "[au]", "-c:a", "aac", "-b:a", "160k"] if music else ["-an"]),
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                    "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], check=True)
     shutil.rmtree(work, ignore_errors=True)
     print(f"pages={len(shots)}")
 
